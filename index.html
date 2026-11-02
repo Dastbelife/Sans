@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Undertale Style — Азгор (финал, звук, музыка)</title>
+  <style>
+    :root { --bg: #000; --text: #fff; --accent: #ffcc00; --red: #ff3333; --blue: #4da6ff; --orange: #ff8800; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a; display: flex; justify-content: center; align-items: center;
+      height: 100vh; font-family: 'Courier New', 'Consolas', monospace; user-select: none; overflow: hidden;
+    }
+    #game-container {
+      position: relative; width: 640px; height: 520px; background: #000;
+      border: 3px solid #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; color: #fff; text-align: center; }
+    .screen.active { display: flex; }
+    #menu-screen h1 {
+      font-size: 36px; letter-spacing: 3px; color: #ffcc00;
+      text-shadow: 0 0 20px rgba(255,180,0,0.6); animation: titlePulse 2s infinite;
+    }
+    @keyframes titlePulse {
+      0%,100%{text-shadow:0 0 20px rgba(255,180,0,0.6);} 50%{text-shadow:0 0 40px rgba(255,180,0,1),0 0 60px rgba(255,150,0,0.7);}
+    }
+    .menu-btn {
+      background: transparent; border: 2px solid #fff; color: #ffcc00;
+      font-family: inherit; font-size: 20px; padding: 12px 40px; cursor: pointer;
+      letter-spacing: 2px; transition: 0.2s; margin: 6px;
+    }
+    .menu-btn:hover { background: #ffcc00; color: #000; border-color: #ffcc00; box-shadow: 0 0 25px rgba(255,180,0,0.5); }
+    .boss-card {
+      border: 2px solid #fff; padding: 20px 40px; cursor: pointer; transition: 0.2s;
+      text-align: center; min-width: 220px;
+    }
+    .boss-card:hover { border-color: #ffcc00; background: #1a1a0a; box-shadow: 0 0 25px rgba(255,180,0,0.4); }
+    .boss-card .boss-icon { font-size: 60px; display: block; margin-bottom: 10px; }
+    .boss-card .boss-name { font-size: 20px; letter-spacing: 2px; }
+    .back-hint { margin-top: 25px; color: #666; font-size: 12px; }
+    #battle-screen { position: relative; width: 100%; height: 100%; }
+    #battle-canvas { display: block; margin: 0 auto; cursor: crosshair; }
+    .battle-ui-bottom {
+      position: absolute; bottom: 15px; left: 0; right: 0;
+      display: flex; justify-content: center; align-items: center; gap: 30px; padding: 0 20px;
+    }
+    .hp-and-items { display: flex; align-items: center; gap: 20px; }
+    .player-hp-display { color: #ffcc00; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+    .hearts { display: flex; gap: 2px; }
+    .heart-icon { font-size: 18px; transition: 0.3s; }
+    .heart-icon.lost { opacity: 0.2; transform: scale(0.7); filter: grayscale(1); }
+    .item-count { color: #ffaa00; font-size: 13px; border: 1px solid #ffaa00; padding: 4px 10px; }
+    .action-buttons { display: flex; gap: 8px; }
+    .action-btn {
+      background: transparent; border: 2px solid #ff8800; color: #ff8800;
+      font-family: inherit; font-size: 16px; padding: 8px 14px; cursor: pointer;
+      letter-spacing: 1px; transition: 0.15s; text-align: center; min-width: 70px;
+    }
+    .action-btn:hover { background: #ff8800; color: #000; box-shadow: 0 0 15px rgba(255,130,0,0.5); }
+    .action-btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+    .action-btn.flash { animation: btnFlash 0.3s ease-out; }
+    @keyframes btnFlash {
+      0%{background:#fff;color:#000;box-shadow:0 0 30px #fff;} 100%{background:transparent;color:#ff8800;box-shadow:none;}
+    }
+    .item-submenu {
+      display: none; position: absolute; bottom: 70px; right: 50%; transform: translateX(50%);
+      border: 2px solid #ffaa00; background: #000; padding: 10px 15px; z-index: 5;
+    }
+    .item-submenu.show { display: block; }
+    .submenu-item { color: #ffaa00; padding: 6px 12px; cursor: pointer; letter-spacing: 1px; transition: 0.15s; border: 1px solid transparent; }
+    .submenu-item:hover { border-color: #ffaa00; background: #1a1a0a; }
+    .submenu-item.used { opacity: 0.3; pointer-events: none; text-decoration: line-through; }
+    #battle-message {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      color: #fff; font-size: 22px; letter-spacing: 2px; pointer-events: none;
+      opacity: 0; transition: 0.3s; text-shadow: 0 0 15px rgba(255,255,255,0.8); z-index: 10;
+    }
+    #battle-message.show { opacity: 1; }
+    #boss-quote {
+      position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+      color: #ffcc00; font-size: 16px; letter-spacing: 2px; text-align: center;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      text-shadow: 0 0 10px rgba(255,200,0,0.6); z-index: 10; white-space: nowrap;
+    }
+    #boss-quote.show { opacity: 1; }
+    .result-screen h2 { font-size: 34px; letter-spacing: 3px; margin-bottom: 20px; }
+    .result-screen.victory h2 { color: #ffcc00; text-shadow: 0 0 30px rgba(255,200,0,0.7); }
+    .result-screen.defeat h2 { color: #ff3333; text-shadow: 0 0 30px rgba(255,50,0,0.7); }
+    #music-toggle {
+      position: absolute; top: 5px; right: 10px;
+      color: #aaa; font-size: 12px; cursor: pointer; z-index: 20; background: none; border: 1px solid #555; padding: 2px 6px;
+    }
+  </style>
+</head>
+<body>
+<div id="game-container">
+  <div id="menu-screen" class="screen active">
+    <h1>UNDERTALE STYLE</h1>
+    <p style="color:#aaa;margin-bottom:30px;">• Битва с Боссом •</p>
+    <button class="menu-btn" data-action="boss-select">БИТВА С БОССОМ</button>
+    <button class="menu-btn" data-action="credits">ОБ ИГРЕ</button>
+  </div>
+
+  <div id="boss-select-screen" class="screen">
+    <h2>Выберите противника</h2>
+    <div class="boss-card" data-boss="asgore">
+      <span class="boss-icon">👑🦁</span>
+      <span class="boss-name">Азгор Дримурр</span>
+      <span class="boss-desc">Король Подземелья • 1000 HP</span>
+    </div>
+    <p class="back-hint">[ESC] — Вернуться в меню</p>
+  </div>
+
+  <div id="battle-screen" class="screen">
+    <canvas id="battle-canvas" width="600" height="360"></canvas>
+    <div id="boss-quote"></div>
+    <button id="music-toggle">🔊</button>
+    <div class="battle-ui-bottom">
+      <div class="hp-and-items">
+        <div class="player-hp-display">
+          <span>HP:</span>
+          <span class="hearts" id="player-hearts"></span>
+          <span id="hp-text">5/5</span>
+        </div>
+        <div class="item-count" id="item-badge">🍬 ×2</div>
+      </div>
+      <div class="action-buttons" id="action-buttons">
+        <button class="action-btn" id="btn-fight">FIGHT</button>
+        <button class="action-btn" id="btn-act">ACT</button>
+        <button class="action-btn" id="btn-item">ITEM</button>
+        <button class="action-btn" id="btn-mercy">MERCY</button>
+      </div>
+    </div>
+    <div class="item-submenu" id="item-submenu">
+      <div class="submenu-item" data-item="heal">🍬 Конфета (×<span id="heal-count">2</span>)</div>
+      <div class="submenu-item" data-item="cancel">↩ Назад</div>
+    </div>
+    <div id="battle-message"></div>
+  </div>
+
+  <div id="victory-screen" class="screen result-screen victory">
+    <h2>★ ПОБЕДА ★</h2>
+    <p style="color:#ffcc00;">Азгор повержен!</p>
+    <button class="menu-btn" data-action="menu" style="margin-top:20px;">В МЕНЮ</button>
+  </div>
+  <div id="defeat-screen" class="screen result-screen defeat">
+    <h2>💀 ПОРАЖЕНИЕ</h2>
+    <p style="color:#ff6666;">Ваша душа разбита...</p>
+    <button class="menu-btn" data-action="retry" style="margin-top:20px;">ПОВТОРИТЬ</button>
+    <button class="menu-btn" data-action="menu" style="margin-top:6px;">В МЕНЮ</button>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // Аудиоконтекст
+    let audioCtx = null;
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+    // Генератор звуков
+    function playTone(freq, type, duration, vol = 0.3, detune = 0) {
+      if (!audioCtx) return;
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      if (detune) osc.detune.value = detune;
+      gain.gain.setValueAtTime(vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + duration);
+    }
+
+    function sfxHit() { playTone(80, 'sawtooth', 0.2, 0.4); playTone(60, 'square', 0.25, 0.3); }
+    function sfxHeal() { playTone(500, 'sine', 0.3, 0.2); setTimeout(()=>playTone(700, 'sine', 0.3, 0.2), 150); }
+    function sfxPlayerAttack() { playTone(200, 'triangle', 0.4, 0.3); setTimeout(()=>playTone(300, 'triangle', 0.4, 0.3), 100); }
+    function sfxEnemyAttack() { playTone(40, 'sawtooth', 0.8, 0.15); }
+    function sfxSpare() { playTone(330, 'sine', 1.2, 0.15); setTimeout(()=>playTone(440, 'sine', 1.5, 0.15), 200); }
+    function sfxVictory() { playTone(523, 'square', 0.5, 0.2); setTimeout(()=>playTone(659, 'square', 0.5, 0.2), 200); setTimeout(()=>playTone(784, 'square', 0.5, 0.3), 400); }
+    function sfxDefeat() { playTone(100, 'sawtooth', 0.8, 0.4); }
+
+    // Музыка (простой ритмичный пульс)
+    let musicOsc = null, musicGain = null, musicInterval = null;
+    let musicOn = true;
+    function startMusic() {
+      if (!audioCtx) initAudio();
+      stopMusic();
+      const now = audioCtx.currentTime;
+      musicGain = audioCtx.createGain();
+      musicGain.gain.value = 0.15;
+      musicGain.connect(audioCtx.destination);
+      musicOsc = audioCtx.createOscillator();
+      musicOsc.type = 'triangle';
+      musicOsc.frequency.value = 65; // низкий гул
+      musicOsc.connect(musicGain);
+      musicOsc.start();
+      // ритмичные басы
+      musicInterval = setInterval(() => {
+        if (!musicOn) return;
+        playTone(55, 'sine', 0.4, 0.12);
+        playTone(82, 'triangle', 0.3, 0.1);
+      }, 800);
+    }
+    function stopMusic() {
+      if (musicOsc) { try { musicOsc.stop(); } catch(e){} musicOsc = null; }
+      if (musicGain) { musicGain.disconnect(); musicGain = null; }
+      if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+    }
+
+    // DOM
+    const container = document.getElementById('game-container');
+    const screens = {
+      menu: document.getElementById('menu-screen'),
+      bossSelect: document.getElementById('boss-select-screen'),
+      battle: document.getElementById('battle-screen'),
+      victory: document.getElementById('victory-screen'),
+      defeat: document.getElementById('defeat-screen'),
+    };
+    const canvas = document.getElementById('battle-canvas');
+    const ctx = canvas.getContext('2d');
+    const battleMsg = document.getElementById('battle-message');
+    const bossQuote = document.getElementById('boss-quote');
+    const heartsEl = document.getElementById('player-hearts');
+    const hpTextEl = document.getElementById('hp-text');
+    const itemBadge = document.getElementById('item-badge');
+    const healCountEl = document.getElementById('heal-count');
+    const itemSubmenu = document.getElementById('item-submenu');
+    const btnFight = document.getElementById('btn-fight');
+    const btnAct = document.getElementById('btn-act');
+    const btnItem = document.getElementById('btn-item');
+    const btnMercy = document.getElementById('btn-mercy');
+    const musicToggle = document.getElementById('music-toggle');
+
+    musicToggle.addEventListener('click', () => {
+      musicOn = !musicOn;
+      musicToggle.textContent = musicOn ? '🔊' : '🔇';
+    });
+
+    const STATE = { MENU:'menu', BOSS_SELECT:'boss_select', BATTLE:'battle', VICTORY:'victory', DEFEAT:'defeat' };
+    const TURN = { PLAYER:'player', ENEMY:'enemy', FINISHER:'finisher' };
+    let gameState = STATE.MENU;
+    let battleTurn = TURN.PLAYER;
+
+    const PLAYER = {
+      x:300, y:280, w:22, h:22, hp:5, maxHp:5, healingItems:2,
+      invincible:false, invTimer:0, invDuration:2.0, isMoving:false,
+      speed:220, vx:0, vy:0, flashTimer:0, visible:true
+    };
+    function resetPlayer() {
+      Object.assign(PLAYER, {
+        x:300, y:280, hp:PLAYER.maxHp, healingItems:2,
+        invincible:false, invTimer:0, isMoving:false, vx:0, vy:0, flashTimer:0, visible:true
+      });
+    }
+
+    const ASGORE = { name:'Азгор Дримурр', hp:1000, maxHp:1000, finalAttackUsed: false, spared: false };
+    function resetAsgore() { ASGORE.hp = ASGORE.maxHp; ASGORE.finalAttackUsed = false; ASGORE.spared = false; }
+
+    let projectiles = [];
+    let attackActive = false;
+    let attackType = 1;
+    let attackTimer = 0;
+
+    let attack1LaunchTimer = 0;
+    let attack2Phase = 0, attack2Timer = 0, attack2Color = 'blue';
+    let attack3Phase = 0, attack3Timer = 0, attack3Center = { x:300, y:200 };
+    const ATTACK3_STATES = { SPAWN:0, GAP:1 };
+    let attack3State = ATTACK3_STATES.SPAWN;
+    const ATTACK3_RADIUS = 100;
+    let attack4Phase = 0, attack4Timer = 0, attack4Target = { x:300, y:280 }, attack4TargetLocked = false, attack4Attempts = 2;
+    let attack5Phase = 0, attack5Timer = 0;
+
+    let finalPhase = 0, finalTimer = 0, finalSubPhase = 0, finalAttempt = 0, finalTarget = { x:300, y:280 }, finalTargetLocked = false;
+    let finalCircleState = 0, finalCircleTimer = 0, finalCircleCenter = { x:300, y:200 };
+    let finalSliceTimer = 0, finalSlicePhase = 0;
+    let finalBallLaunchTimer = 0, finalBallsLaunched = 0;
+
+    let finisherMode = false;
+    let finisherBtns = { fight: { x: 0, y: 0, w: 150, h: 40 }, mercy: { x: 0, y: 0, w: 150, h: 40 } };
+
+    const quotes = {
+      fight: ["Ты смеешь поднимать руку на короля?", "Хмпф... Неплохо.", "Твоя решимость... впечатляет."],
+      act: ["Ты пытаешься говорить? Бесполезно.", "Моё решение непоколебимо."],
+      item: ["Ты тратишь время на жалкие конфеты.", "Лекарство не спасёт тебя."],
+      mercy: ["Пощады не будет.", "Ты не можешь сбежать."],
+      hurt: ["Слабость.", "Боль напомнит тебе о твоём месте."],
+      start: ["Итак, ты пришёл...", "Покажи мне свою силу."],
+      final: ["Это... конец.", "Я вложу в эту атаку всё."],
+      victory: ["Невозможно... но я горжусь тобой, дитя."],
+      spare: ["Я недостоин пощады... Я убил шесть детей, что упали до тебя. Моя душа навеки проклята."]
+    };
+
+    const keys = {};
+    window.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      initAudio();
+      if (e.key === 'Escape') {
+        if (gameState === STATE.BOSS_SELECT) switchScreen(STATE.MENU);
+        if (gameState === STATE.BATTLE && itemSubmenu.classList.contains('show')) closeItemSubmenu();
+      }
+      if ((e.key === 'z' || e.key === 'Z' || e.key === 'Enter') && gameState === STATE.BATTLE && itemSubmenu.classList.contains('show')) useHealingItem();
+      if ((e.key === 'x' || e.key === 'X') && gameState === STATE.BATTLE && itemSubmenu.classList.contains('show')) closeItemSubmenu();
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+    });
+    window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    canvas.addEventListener('click', (e) => {
+      if (!finisherMode || gameState !== STATE.BATTLE) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mx = (e.clientX - rect.left) * scaleX;
+      const my = (e.clientY - rect.top) * scaleY;
+      const fb = finisherBtns;
+      if (mx >= fb.fight.x && mx <= fb.fight.x + fb.fight.w && my >= fb.fight.y && my <= fb.fight.y + fb.fight.h) {
+        finisherMode = false;
+        sfxVictory();
+        switchScreen(STATE.VICTORY);
+      } else if (mx >= fb.mercy.x && mx <= fb.mercy.x + fb.mercy.w && my >= fb.mercy.y && my <= fb.mercy.y + fb.mercy.h) {
+        if (!ASGORE.spared) {
+          ASGORE.spared = true;
+          sfxSpare();
+          showBossQuote(quotes.spare[0]);
+          showMsg('Вы пощадили Азгора.', 3);
+        }
+      }
+    });
+
+    function switchScreen(state) {
+      Object.values(screens).forEach(s => s.classList.remove('active'));
+      gameState = state;
+      if (state === STATE.MENU) { screens.menu.classList.add('active'); stopMusic(); }
+      else if (state === STATE.BOSS_SELECT) screens.bossSelect.classList.add('active');
+      else if (state === STATE.BATTLE) {
+        screens.battle.classList.add('active');
+        resetPlayer(); resetAsgore();
+        clearAttack(); battleTurn = TURN.PLAYER;
+        updateHP(); enableButtons(true); closeItemSubmenu(); hideMsg();
+        PLAYER.invincible = false; PLAYER.invTimer = 0;
+        finisherMode = false;
+        startMusic();
+        showBossQuote(randomQuote('start'));
+      } else if (state === STATE.VICTORY) {
+        screens.victory.classList.add('active');
+        stopMusic();
+        sfxVictory();
+        showBossQuote(quotes.victory[0]);
+      } else if (state === STATE.DEFEAT) {
+        screens.defeat.classList.add('active');
+        stopMusic();
+        sfxDefeat();
+      }
+    }
+
+    function clearAttack() {
+      projectiles = []; attackActive = false; attackTimer = 0;
+      attack2Phase = 0; attack2Timer = 0;
+      attack3Phase = 0; attack3Timer = 0; attack3State = ATTACK3_STATES.SPAWN;
+      attack4Phase = 0; attack4Timer = 0; attack4TargetLocked = false; attack4Attempts = 2;
+      attack5Phase = 0; attack5Timer = 0;
+      attack1LaunchTimer = 0;
+      finalPhase = 0; finalTimer = 0; finalSubPhase = 0; finalAttempt = 0;
+      finalTarget = { x:300, y:280 }; finalTargetLocked = false;
+      finalCircleState = 0; finalCircleTimer = 0; finalCircleCenter = { x:300, y:200 };
+      finalSliceTimer = 0; finalSlicePhase = 0;
+      finalBallLaunchTimer = 0; finalBallsLaunched = 0;
+      finisherMode = false;
+    }
+
+    function updateHP() {
+      let html = '';
+      for (let i=0; i<PLAYER.maxHp; i++) {
+        html += `<span class="heart-icon${i>=PLAYER.hp?' lost':''}">${i>=PLAYER.hp?'🖤':'❤️'}</span>`;
+      }
+      heartsEl.innerHTML = html;
+      hpTextEl.textContent = `${PLAYER.hp}/${PLAYER.maxHp}`;
+      healCountEl.textContent = PLAYER.healingItems;
+      itemBadge.textContent = `🍬 ×${PLAYER.healingItems}`;
+      const healBtn = itemSubmenu.querySelector('[data-item="heal"]');
+      if (healBtn) {
+        healBtn.querySelector('span').textContent = PLAYER.healingItems;
+        healBtn.classList.toggle('used', PLAYER.healingItems <= 0);
+      }
+    }
+
+    function enableButtons(enabled) {
+      btnFight.disabled = btnAct.disabled = btnItem.disabled = btnMercy.disabled = !enabled;
+      if (!enabled) closeItemSubmenu();
+    }
+    function closeItemSubmenu() { itemSubmenu.classList.remove('show'); }
+    function openItemSubmenu() {
+      if (PLAYER.healingItems > 0 && battleTurn === TURN.PLAYER) itemSubmenu.classList.add('show');
+      else if (PLAYER.healingItems <= 0) showMsg('Нет предметов!',1.5);
+    }
+    function useHealingItem() {
+      if (PLAYER.healingItems<=0 || PLAYER.hp>=PLAYER.maxHp) { closeItemSubmenu(); return; }
+      PLAYER.healingItems--; PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp+1);
+      updateHP(); closeItemSubmenu(); showMsg('Вы съели конфету! +1 HP',2);
+      sfxHeal();
+      showBossQuote(randomQuote('item'));
+      setTimeout(()=>{ if(gameState===STATE.BATTLE && battleTurn===TURN.PLAYER) startEnemyTurn(); }, 800);
+      enableButtons(false);
+    }
+
+    function randomQuote(type) { const arr = quotes[type] || [""]; return arr[Math.floor(Math.random() * arr.length)]; }
+    function showBossQuote(text) {
+      bossQuote.textContent = text; bossQuote.classList.add('show');
+      clearTimeout(bossQuote._timeout); bossQuote._timeout = setTimeout(() => bossQuote.classList.remove('show'), 3000);
+    }
+
+    function playerFight() {
+      if (battleTurn!==TURN.PLAYER) return;
+      closeItemSubmenu();
+      const dmg = 100;
+      ASGORE.hp = Math.max(0, ASGORE.hp - dmg);
+      showMsg(`Атака! -${dmg} HP`,1.5);
+      sfxPlayerAttack();
+      showBossQuote(randomQuote('fight'));
+      btnFight.classList.add('flash'); setTimeout(()=>btnFight.classList.remove('flash'),300);
+      if (ASGORE.hp <= 0) { enableButtons(false); startFinisher(); return; }
+      enableButtons(false);
+      setTimeout(()=>{ if(gameState===STATE.BATTLE&&battleTurn===TURN.PLAYER) startEnemyTurn(); },700);
+    }
+    function playerAct() {
+      if (battleTurn!==TURN.PLAYER) return; closeItemSubmenu();
+      showMsg('Азгор суров.',2);
+      showBossQuote(randomQuote('act'));
+      btnAct.classList.add('flash'); setTimeout(()=>btnAct.classList.remove('flash'),300);
+      enableButtons(false); setTimeout(()=>{ if(gameState===STATE.BATTLE&&battleTurn===TURN.PLAYER) startEnemyTurn(); },1200);
+    }
+    function playerMercy() {
+      if (battleTurn!==TURN.PLAYER) return; closeItemSubmenu();
+      showMsg('Пощада невозможна...',2);
+      showBossQuote(randomQuote('mercy'));
+      btnMercy.classList.add('flash'); setTimeout(()=>btnMercy.classList.remove('flash'),300);
+      enableButtons(false); setTimeout(()=>{ if(gameState===STATE.BATTLE&&battleTurn===TURN.PLAYER) startEnemyTurn(); },1200);
+    }
+    function showMsg(text, dur) {
+      battleMsg.textContent = text; battleMsg.classList.add('show');
+      clearTimeout(battleMsg._t); battleMsg._t = setTimeout(()=>battleMsg.classList.remove('show'), dur*1000);
+    }
+    function hideMsg() { battleMsg.classList.remove('show'); battleMsg.textContent=''; }
+
+    function startFinisher() {
+      battleTurn = TURN.FINISHER;
+      finisherMode = true;
+      attackActive = false;
+      projectiles = [];
+      enableButtons(false);
+      closeItemSubmenu();
+      hideMsg();
+      showBossQuote('...');
+      finisherBtns.fight.x = 180; finisherBtns.fight.y = 260;
+      finisherBtns.mercy.x = 350; finisherBtns.mercy.y = 260;
+    }
+
+    function startEnemyTurn() {
+      battleTurn = TURN.ENEMY;
+      projectiles = [];
+      attackActive = true;
+      attackTimer = 0;
+      enableButtons(false);
+      closeItemSubmenu();
+      hideMsg();
+      sfxEnemyAttack();
+
+      if (ASGORE.hp <= 100 && !ASGORE.finalAttackUsed) {
+        ASGORE.finalAttackUsed = true;
+        attackType = 99;
+        initFinalAttack();
+        return;
+      }
+
+      const availableAttacks = [1,2,3];
+      if (ASGORE.hp <= 500) availableAttacks.push(4, 5);
+      attackType = availableAttacks[Math.floor(Math.random() * availableAttacks.length)];
+
+      if (attackType === 1) {
+        attack1LaunchTimer = 0;
+        const N = 10;
+        const centerX = 300, centerY = 180, radius = 160;
+        for (let i=0; i<N; i++) {
+          const angle = (i/N)*Math.PI*2;
+          projectiles.push({
+            type:'homingBall', x: centerX + Math.cos(angle)*radius, y: centerY + Math.sin(angle)*radius,
+            radius: 13, vx:0, vy:0, color:'#ff6600', glow:'#ff4400', alive:true, launched: false, speed: 180
+          });
+        }
+      } else if (attackType === 2) {
+        attack2Phase = 0; attack2Timer = 0;
+        attack2Color = Math.random() < 0.5 ? 'blue' : 'orange';
+      } else if (attackType === 3) {
+        attack3Phase = 0; attack3Timer = 0; attack3State = ATTACK3_STATES.SPAWN;
+        attack3Center = { x: PLAYER.x, y: PLAYER.y };
+        spawnAttack3Circle();
+      } else if (attackType === 4) {
+        attack4Phase = 0; attack4Timer = 0; attack4TargetLocked = false; attack4Attempts = 2;
+        projectiles.push({ type:'bigTrident', x:300, y:180, w:120, h:260, color:'#4da6ff', glow:'#2299ff', alive:true, static:true });
+        for (let i=0; i<5; i++) {
+          const angle = (i/5)*Math.PI*2 + Math.random()*0.5;
+          projectiles.push({ type:'fireball', x:300, y:180, radius:12, vx:Math.cos(angle)*120, vy:Math.sin(angle)*120, color:'#ff6600', glow:'#ff4400', alive:true, scattered:true, bounceCount:0 });
+        }
+      } else if (attackType === 5) {
+        attack5Phase = 0; attack5Timer = 0;
+        projectiles.push({ type:'warningLine', x:300, y:180, w:4, h:320, color:'rgba(255,200,0,0.4)', alive:true });
+        projectiles.push({ type:'warningLine', x:300, y:180, w:560, h:4, color:'rgba(255,200,0,0.4)', alive:true });
+        projectiles.push({ type:'warningLine', x:300, y:180, w:Math.sqrt(560*560+320*320), h:4, angle: Math.atan2(320,560), color:'rgba(255,200,0,0.4)', alive:true });
+        projectiles.push({ type:'warningLine', x:300, y:180, w:Math.sqrt(560*560+320*320), h:4, angle: Math.atan2(-320,560), color:'rgba(255,200,0,0.4)', alive:true });
+      }
+    }
+
+    function initFinalAttack() {
+      finalPhase = 0; finalTimer = 0; finalSubPhase = 0; finalAttempt = 0;
+      finalTarget = { x:300, y:280 }; finalTargetLocked = false;
+      finalCircleState = 0; finalCircleTimer = 0; finalCircleCenter = { x:300, y:200 };
+      finalSlicePhase = 0; finalSliceTimer = 0;
+      finalBallsLaunched = 0; finalBallLaunchTimer = 0;
+      projectiles = [];
+      showBossQuote(randomQuote('final'));
+      projectiles.push({ type:'bigTrident', x:300, y:180, w:120, h:260, color:'#4da6ff', glow:'#2299ff', alive:true, static:true });
+      for (let i=0; i<5; i++) {
+        const angle = (i/5)*Math.PI*2 + Math.random()*0.5;
+        projectiles.push({ type:'fireball', x:300, y:180, radius:12, vx:Math.cos(angle)*140, vy:Math.sin(angle)*140, color:'#ff6600', glow:'#ff4400', alive:true, scattered:true, bounceCount:0 });
+      }
+    }
+
+    function spawnAttack3Circle() {
+      projectiles = [];
+      const N = 12;
+      for (let i=0; i<N; i++) {
+        const angle = (i/N)*Math.PI*2;
+        projectiles.push({ type:'circleFire', x: attack3Center.x + Math.cos(angle)*ATTACK3_RADIUS, y: attack3Center.y + Math.sin(angle)*ATTACK3_RADIUS, radius:13, color:'#ff6600', glow:'#ff4400', alive:true });
+      }
+      attack3State = ATTACK3_STATES.SPAWN; attack3Timer = 0;
+    }
+
+    function updateAttack1(dt) {
+      if (attackTimer > 1.8 && !projectiles.some(p=>p.type==='blueTrident')) {
+        projectiles.push({ type:'blueTrident', x:-80, y:180, w:70, h:120, vx:200, vy:0, color:'#4da6ff', glow:'#2299ff', alive:true, isBlue:true });
+      }
+      const notLaunched = projectiles.filter(p => p.type==='homingBall' && !p.launched);
+      if (notLaunched.length > 0 && attackTimer > 1.2) {
+        if (attackTimer >= attack1LaunchTimer) {
+          const idx = Math.floor(Math.random() * notLaunched.length);
+          const ball = notLaunched[idx]; ball.launched = true;
+          const dx = PLAYER.x - ball.x, dy = PLAYER.y - ball.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          ball.vx = (dx / dist) * ball.speed; ball.vy = (dy / dist) * ball.speed;
+          attack1LaunchTimer = attackTimer + 0.4;
+        }
+      }
+      projectiles.forEach(p => {
+        if (p.type==='homingBall' && p.launched) { p.x += p.vx*dt; p.y += p.vy*dt; }
+        else if (p.type==='blueTrident') p.x += p.vx*dt;
+      });
+      projectiles = projectiles.filter(p => (p.type==='homingBall' || p.type==='blueTrident') ? (p.x>-50 && p.x<650 && p.y>-50 && p.y<410) : true);
+      if (attackTimer > 7.0) endEnemyTurn();
+    }
+
+    function updateAttack2(dt) {
+      if (attack2Phase >= 6) { endEnemyTurn(); return; }
+      attack2Timer += dt;
+      const isSign = attack2Phase % 2 === 0;
+      if (attack2Timer >= (isSign ? 1.0 : 0.7)) {
+        if (isSign) {
+          attack2Phase++; attack2Timer = 0; projectiles = [];
+          projectiles.push({
+            type:'bigTrident', x:300, y:180, w:500, h:300,
+            color: attack2Color==='blue'?'#4da6ff':'#ff8800',
+            glow: attack2Color==='blue'?'#2299ff':'#ff5500',
+            alive:true, isBlue: attack2Color==='blue', isOrange: attack2Color==='orange'
+          });
+        } else {
+          projectiles = []; attack2Phase++; attack2Timer = 0;
+          if (attack2Phase < 6) attack2Color = Math.random()<0.5?'blue':'orange';
+        }
+      }
+    }
+
+    function updateAttack3(dt) {
+      if (attack3Phase >= 4) { endEnemyTurn(); return; }
+      attack3Timer += dt;
+      if (attack3State === ATTACK3_STATES.SPAWN) {
+        if (attack3Timer >= 1.0) {
+          const active = projectiles.filter(p=>p.type==='circleFire'&&p.alive);
+          if (active.length>0) {
+            let idx = 0, margin=40;
+            for (let a=0; a<20; a++) { const i = Math.floor(Math.random()*active.length); if (active[i].x>margin && active[i].x<600-margin && active[i].y>margin && active[i].y<360-margin) { idx=i; break; } }
+            active[idx].alive = false;
+          }
+          attack3State = ATTACK3_STATES.GAP; attack3Timer = 0;
+        }
+      } else {
+        if (attack3Timer >= 1.3) {
+          if (Math.hypot(PLAYER.x-attack3Center.x, PLAYER.y-attack3Center.y) < ATTACK3_RADIUS+15) hitPlayer();
+          attack3Phase++;
+          if (attack3Phase<4) { attack3Center = { x:PLAYER.x, y:PLAYER.y }; spawnAttack3Circle(); }
+          else endEnemyTurn();
+        }
+      }
+    }
+
+    function updateAttack4(dt) {
+      attack4Timer += dt;
+      if (attack4Phase === 0) { if (attack4Timer>=2.0) { attack4Phase=1; attack4Timer=0; attack4TargetLocked=false; projectiles=[]; } }
+      else if (attack4Phase === 1) {
+        if (attack4Timer<0.7) attack4Target = { x:PLAYER.x, y:PLAYER.y };
+        else if (!attack4TargetLocked) attack4TargetLocked = true;
+        if (attack4Timer>=1.2) {
+          const dx = attack4Target.x-300, dy = attack4Target.y-180;
+          const len = Math.hypot(dx,dy)+100, ang = Math.atan2(dy,dx);
+          projectiles.push({ type:'aimedTrident', x:300+Math.cos(ang)*len/2, y:180+Math.sin(ang)*len/2, w:len, h:40, angle:ang, color:'#ff6600', glow:'#ff4400', alive:true, isOrange:true });
+          attack4Phase=2; attack4Timer=0;
+        }
+      } else if (attack4Phase === 2) {
+        if (attack4Timer>=0.4) {
+          attack4Attempts--;
+          if (attack4Attempts>0) { attack4Phase=1; attack4Timer=0; attack4TargetLocked=false; projectiles=[]; }
+          else endEnemyTurn();
+        }
+      }
+    }
+
+    function updateAttack5(dt) {
+      attack5Timer += dt;
+      if (attack5Phase===0) { if (attack5Timer>=1.0) { attack5Phase=1; attack5Timer=0; projectiles=[]; spawn5Cross(); } }
+      else if (attack5Phase===1) { if (attack5Timer>=0.8) endEnemyTurn(); }
+    }
+    function spawn5Cross() {
+      projectiles.push({ type:'tridentLine', x:300, y:180, w:30, h:320, color:'#4da6ff', glow:'#2299ff', alive:true, isBlue:true });
+      projectiles.push({ type:'tridentLine', x:300, y:180, w:560, h:30, color:'#4da6ff', glow:'#2299ff', alive:true, isBlue:true });
+      const d = Math.sqrt(560*560+320*320);
+      projectiles.push({ type:'aimedTrident', x:300, y:180, w:d, h:30, angle:Math.atan2(320,560), color:'#4da6ff', glow:'#2299ff', alive:true, isBlue:true });
+      projectiles.push({ type:'aimedTrident', x:300, y:180, w:d, h:30, angle:Math.atan2(-320,560), color:'#4da6ff', glow:'#2299ff', alive:true, isBlue:true });
+    }
+
+    function updateFinalAttack(dt) {
+      finalTimer += dt;
+      switch (finalPhase) {
+        case 0: if (finalTimer>=2.0) { finalPhase=1; finalTimer=0; projectiles=[]; finalAttempt=0; finalSubPhase=0; finalTargetLocked=false; } break;
+        case 1:
+          if (finalAttempt>=3) { finalPhase=2; finalTimer=0; projectiles=[]; finalCircleCenter={x:PLAYER.x,y:PLAYER.y}; spawnFinalCircle(); break; }
+          if (finalSubPhase===0) {
+            if (finalTimer<0.7) finalTarget = {x:PLAYER.x, y:PLAYER.y}; else if (!finalTargetLocked) finalTargetLocked=true;
+            if (finalTimer>=1.2) {
+              const dx=finalTarget.x-300, dy=finalTarget.y-180, len=Math.hypot(dx,dy)+100, ang=Math.atan2(dy,dx);
+              projectiles.push({ type:'aimedTrident', x:300+Math.cos(ang)*len/2, y:180+Math.sin(ang)*len/2, w:len, h:40, angle:ang, color:'#ff6600', glow:'#ff4400', alive:true, isOrange:true });
+              finalSubPhase=1; finalTimer=0;
+            }
+          } else { if (finalTimer>=0.4) { finalAttempt++; finalSubPhase=0; finalTimer=0; finalTargetLocked=false; projectiles=[]; } }
+          break;
+        case 2:
+          finalCircleTimer += dt;
+          if (finalCircleState===0) {
+            if (finalCircleTimer>=1.0) {
+              const active=projectiles.filter(p=>p.type==='circleFire'&&p.alive);
+              if (active.length>0) { let idx=0; for (let a=0;a<20;a++) { const i=Math.floor(Math.random()*active.length); if (active[i].x>40&&active[i].x<560&&active[i].y>40&&active[i].y<320){idx=i;break;} } active[idx].alive=false; }
+              finalCircleState=1; finalCircleTimer=0;
+            }
+          } else {
+            if (finalCircleTimer>=1.3) {
+              if (Math.hypot(PLAYER.x-finalCircleCenter.x, PLAYER.y-finalCircleCenter.y) < ATTACK3_RADIUS+15) hitPlayer();
+              finalPhase=3; finalTimer=0; projectiles=[]; finalSlicePhase=0; finalSliceTimer=0; spawnFinalWarnings();
+            }
+          }
+          break;
+        case 3:
+          finalSliceTimer += dt;
+          if (finalSlicePhase===0) { if (finalSliceTimer>=0.8) { finalSlicePhase=1; projectiles=[]; for (let i=0;i<6;i++) projectiles.push({ type:'aimedTrident', x:300, y:180, w:Math.sqrt(560*560+320*320), h:30, angle: (i/6)*Math.PI+Math.random()*0.5, color:'#4da6ff', glow:'#2299ff', alive:true, isBlue:true }); } }
+          else if (finalSliceTimer>=1.6) { finalPhase=4; finalTimer=0; projectiles=[]; finalBallsLaunched=0; finalBallLaunchTimer=0; for (let i=0;i<10;i++) { const a=(i/10)*Math.PI*2; projectiles.push({ type:'homingBall', x:300+Math.cos(a)*160, y:180+Math.sin(a)*160, radius:13, vx:0,vy:0,color:'#ff6600',glow:'#ff4400',alive:true,launched:false,speed:200 }); } }
+          break;
+        case 4:
+          const notLaunched=projectiles.filter(p=>p.type==='homingBall'&&!p.launched);
+          if (notLaunched.length>0 && finalTimer>=finalBallLaunchTimer) {
+            const b=notLaunched[Math.floor(Math.random()*notLaunched.length)]; b.launched=true;
+            const dx=PLAYER.x-b.x, dy=PLAYER.y-b.y, d=Math.hypot(dx,dy)||1;
+            b.vx=dx/d*b.speed; b.vy=dy/d*b.speed;
+            finalBallsLaunched++; finalBallLaunchTimer=finalTimer+0.35;
+          }
+          projectiles.forEach(p=>{if(p.type==='homingBall'&&p.launched){p.x+=p.vx*dt;p.y+=p.vy*dt;}});
+          projectiles=projectiles.filter(p=>p.type!=='homingBall'||(p.x>-50&&p.x<650&&p.y>-50&&p.y<410));
+          if (finalBallsLaunched>=10 && notLaunched.length===0) { finalPhase=5; finalTimer=0; }
+          break;
+        case 5: if (finalTimer>1.5) endEnemyTurn(); break;
+      }
+    }
+
+    function spawnFinalCircle() { projectiles=[]; for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2;projectiles.push({type:'circleFire',x:finalCircleCenter.x+Math.cos(a)*ATTACK3_RADIUS,y:finalCircleCenter.y+Math.sin(a)*ATTACK3_RADIUS,radius:13,color:'#ff6600',glow:'#ff4400',alive:true});} finalCircleState=0; finalCircleTimer=0; }
+    function spawnFinalWarnings() { projectiles=[]; for(let i=0;i<6;i++){const a=(i/6)*Math.PI+Math.random()*0.3;projectiles.push({type:'warningLine',x:300,y:180,w:Math.sqrt(560*560+320*320),h:4,angle:a,color:'rgba(255,200,0,0.4)',alive:true});} }
+
+    function endEnemyTurn() {
+      attackActive = false; projectiles = [];
+      battleTurn = TURN.PLAYER; enableButtons(true);
+      showMsg('Ваш ход!', 1.0);
+      if (PLAYER.invincible && PLAYER.invTimer<=0) PLAYER.invincible = false;
+    }
+
+    function checkCollisions() {
+      if (PLAYER.invincible || finisherMode) return;
+      const px=PLAYER.x, py=PLAYER.y, pr=PLAYER.w/2;
+      for (const p of projectiles) {
+        if (!p.alive) continue;
+        if (p.type==='fireball'||p.type==='homingBall'||p.type==='circleFire') { if(Math.hypot(px-p.x,py-p.y)<pr+p.radius){hitPlayer();return;} }
+        else if (p.type==='blueTrident') {
+          const cx=Math.max(p.x-p.w/2,Math.min(px,p.x+p.w/2)), cy=Math.max(p.y-p.h/2,Math.min(py,p.y+p.h/2));
+          if(Math.hypot(px-cx,py-cy)<pr+6 && p.isBlue && PLAYER.isMoving) { hitPlayer(); return; }
+        } else if (p.type==='bigTrident') {
+          if(px>p.x-p.w/2&&px<p.x+p.w/2&&py>p.y-p.h/2&&py<p.y+p.h/2) {
+            if((p.isBlue&&PLAYER.isMoving)||(p.isOrange&&!PLAYER.isMoving)||(!p.isBlue&&!p.isOrange)) { hitPlayer(); return; }
+          }
+        } else if (p.type==='tridentLine') { if(px>p.x-p.w/2&&px<p.x+p.w/2&&py>p.y-p.h/2&&py<p.y+p.h/2) { hitPlayer(); return; } }
+        else if (p.type==='aimedTrident') {
+          const dx=px-p.x,dy=py-p.y, cos=Math.cos(-p.angle), sin=Math.sin(-p.angle), lx=dx*cos-dy*sin, ly=dx*sin+dy*cos;
+          if(lx>-p.w/2&&lx<p.w/2&&ly>-p.h/2&&ly<p.h/2) { hitPlayer(); return; }
+        }
+      }
+    }
+
+    function hitPlayer() {
+      if (PLAYER.invincible || finisherMode) return;
+      PLAYER.hp--; PLAYER.invincible=true; PLAYER.invincibleTimer=PLAYER.invincibleDuration; PLAYER.flashTimer=0;
+      updateHP(); showMsg('Урон! -1 HP',1.0); sfxHit(); showBossQuote(randomQuote('hurt'));
+      if (PLAYER.hp<=0) { clearAttack(); enableButtons(false); setTimeout(()=>switchScreen(STATE.DEFEAT),800); }
+    }
+
+    function drawBattle() {
+      ctx.clearRect(0,0,600,360);
+      ctx.fillStyle='#000'; ctx.fillRect(0,0,600,360);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.strokeRect(18,18,564,324);
+      ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.strokeRect(22,22,556,316);
+
+      ctx.fillStyle='#fff'; ctx.font='18px "Courier New"'; ctx.textAlign='center';
+      ctx.fillText(ASGORE.name, 300, 10);
+      const bw=200, bh=8, bx=200, by=20;
+      ctx.fillStyle='#333'; ctx.fillRect(bx,by,bw,bh);
+      const ratio = ASGORE.hp / ASGORE.maxHp;
+      ctx.fillStyle = ratio>0.5?'#ffcc00':ratio>0.25?'#ff8800':'#ff3333';
+      ctx.fillRect(bx,by, bw*ratio, bh);
+      ctx.strokeStyle='#fff'; ctx.strokeRect(bx,by,bw,bh);
+
+      projectiles.forEach(p => {
+        if (!p.alive) return;
+        if (p.type==='warningLine') { ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.angle||0); ctx.fillStyle=p.color; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore(); }
+        else if (p.type==='tridentLine') { ctx.fillStyle=p.color; ctx.shadowColor=p.glow; ctx.shadowBlur=10; ctx.fillRect(p.x-p.w/2,p.y-p.h/2,p.w,p.h); ctx.shadowBlur=0; }
+        else if (p.type==='fireball'||p.type==='homingBall'||p.type==='circleFire') {
+          const grad=ctx.createRadialGradient(p.x-3,p.y-3,2,p.x,p.y,p.radius); grad.addColorStop(0,'#ffff88'); grad.addColorStop(0.5,p.color); grad.addColorStop(1,p.glow);
+          ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(p.x,p.y,p.radius,0,Math.PI*2); ctx.fill();
+        } else if (p.type==='blueTrident') {
+          ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor=p.glow; ctx.shadowBlur=15; ctx.fillStyle=p.color;
+          ctx.fillRect(-35,-10,70,20); ctx.fillRect(25,-50,30,100);
+          ctx.shadowBlur=0; ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.strokeRect(-35,-10,70,20); ctx.strokeRect(25,-50,30,100); ctx.restore();
+        } else if (p.type==='bigTrident') {
+          ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor=p.glow; ctx.shadowBlur=20; ctx.fillStyle=p.color;
+          ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.shadowBlur=0; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+        } else if (p.type==='aimedTrident') {
+          ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.angle); ctx.shadowColor=p.glow; ctx.shadowBlur=15; ctx.fillStyle=p.color;
+          ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h); ctx.shadowBlur=0; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.strokeRect(-p.w/2,-p.h/2,p.w,p.h); ctx.restore();
+        }
+      });
+
+      if (PLAYER.visible || !PLAYER.invincible) {
+        let alpha=1; if (PLAYER.invincible) alpha=Math.sin(PLAYER.flashTimer*18)>0?1:0.25;
+        ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle=PLAYER.invincible?'#ff8888':'#ff2222';
+        ctx.beginPath(); const s=PLAYER.w/22; ctx.translate(PLAYER.x,PLAYER.y); ctx.scale(s,s);
+        ctx.moveTo(0,-3); ctx.bezierCurveTo(-5,-10,-12,-6,-12,0); ctx.bezierCurveTo(-12,7,0,14,0,14); ctx.bezierCurveTo(0,14,12,7,12,0); ctx.bezierCurveTo(12,-6,5,-10,0,-3); ctx.fill(); ctx.restore();
+      }
+
+      if (attackActive) {
+        if (attackType===2&&attack2Phase%2===0&&attack2Phase<6) { ctx.fillStyle=attack2Color==='blue'?'#4da6ff':'#ff8800'; ctx.font='bold 28px "Courier New"'; ctx.fillText(attack2Color==='blue'?'❄ СТОЙ ❄':'🔥 ДВИГАЙСЯ 🔥',300,200); }
+        if (attackType===3&&attack3State===ATTACK3_STATES.GAP) { ctx.fillStyle='#ffcc00'; ctx.font='16px "Courier New"'; ctx.fillText('ВЫХОДИ В БРЕШЬ!',300,80); }
+        if (attackType===4&&attack4Phase===1) { ctx.fillStyle='#ff6600'; ctx.font='bold 20px "Courier New"'; ctx.fillText('УКЛОНИСЬ!',300,80); ctx.beginPath(); ctx.moveTo(300,180); ctx.lineTo(attack4Target.x,attack4Target.y); ctx.strokeStyle='#ff6600'; ctx.lineWidth=2; ctx.stroke(); }
+        if (attackType===5&&attack5Phase===0) { ctx.fillStyle='#ffcc00'; ctx.font='bold 18px "Courier New"'; ctx.fillText('УКЛОНИСЬ ОТ ЛИНИЙ!',300,40); }
+        if (attackType===99) { ctx.fillStyle='#ffcc00'; ctx.font='bold 16px "Courier New"'; ctx.fillText('ФИНАЛЬНАЯ АТАКА!',300,40); }
+      }
+
+      if (finisherMode) {
+        const fb=finisherBtns;
+        ctx.fillStyle='#600'; ctx.fillRect(fb.fight.x,fb.fight.y,fb.fight.w,fb.fight.h); ctx.strokeStyle='#ff6600'; ctx.lineWidth=2; ctx.strokeRect(fb.fight.x,fb.fight.y,fb.fight.w,fb.fight.h);
+        ctx.fillStyle='#ff6600'; ctx.font='bold 20px "Courier New"'; ctx.fillText('FIGHT',fb.fight.x+fb.fight.w/2,fb.fight.y+28);
+        if (!ASGORE.spared) {
+          ctx.fillStyle='#006'; ctx.fillRect(fb.mercy.x,fb.mercy.y,fb.mercy.w,fb.mercy.h); ctx.strokeStyle='#ffcc00'; ctx.lineWidth=2; ctx.strokeRect(fb.mercy.x,fb.mercy.y,fb.mercy.w,fb.mercy.h);
+          ctx.fillStyle='#ffcc00'; ctx.fillText('MERCY',fb.mercy.x+fb.mercy.w/2,fb.mercy.y+28);
+        }
+      }
+    }
+
+    let lastTime = performance.now();
+    function loop(now) {
+      let dt = (now - lastTime)/1000; if (dt<=0) dt=0.016; if (dt>0.1) dt=0.1; lastTime = now;
+      if (gameState === STATE.BATTLE) {
+        if (!finisherMode) {
+          let mx=0,my=0;
+          if (keys['ArrowLeft']||keys['a']||keys['A']||keys['ф']||keys['Ф']) mx=-1;
+          if (keys['ArrowRight']||keys['d']||keys['D']||keys['в']||keys['В']) mx=1;
+          if (keys['ArrowUp']||keys['w']||keys['W']||keys['ц']||keys['Ц']) my=-1;
+          if (keys['ArrowDown']||keys['s']||keys['S']||keys['ы']||keys['Ы']) my=1;
+          PLAYER.isMoving = (mx!==0 || my!==0);
+          if (mx&&my) { mx*=0.707; my*=0.707; }
+          PLAYER.vx = mx*PLAYER.speed; PLAYER.vy = my*PLAYER.speed;
+          PLAYER.x += PLAYER.vx*dt; PLAYER.y += PLAYER.vy*dt;
+          PLAYER.x = Math.max(22+PLAYER.w/2, Math.min(578-PLAYER.w/2, PLAYER.x));
+          PLAYER.y = Math.max(22+PLAYER.h/2, Math.min(338-PLAYER.h/2, PLAYER.y));
+        }
+        if (PLAYER.invincible) { PLAYER.invincibleTimer -= dt; PLAYER.flashTimer += dt; if (PLAYER.invincibleTimer <= 0) { PLAYER.invincible = false; PLAYER.invincibleTimer = 0; PLAYER.visible = true; } }
+        if (attackActive && !finisherMode) {
+          attackTimer += dt;
+          if (attackType === 1) updateAttack1(dt); else if (attackType === 2) updateAttack2(dt); else if (attackType === 3) updateAttack3(dt);
+          else if (attackType === 4) updateAttack4(dt); else if (attackType === 5) updateAttack5(dt); else if (attackType === 99) updateFinalAttack(dt);
+          projectiles = projectiles.filter(p => p.alive); checkCollisions();
+        }
+        drawBattle();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    btnFight.onclick = playerFight; btnAct.onclick = playerAct; btnItem.onclick = () => { if (battleTurn===TURN.PLAYER) itemSubmenu.classList.contains('show')?closeItemSubmenu():openItemSubmenu(); }; btnMercy.onclick = playerMercy;
+    itemSubmenu.querySelector('[data-item="heal"]').onclick = useHealingItem; itemSubmenu.querySelector('[data-item="cancel"]').onclick = closeItemSubmenu;
+    document.querySelectorAll('[data-action="boss-select"]').forEach(b => b.onclick = ()=>switchScreen(STATE.BOSS_SELECT));
+    document.querySelectorAll('[data-action="credits"]').forEach(b => b.onclick = ()=>alert('Азгор Дримурр: 1000 HP.\n5 обычных атак + финальная при 100 HP.\nЗвук и музыка встроены.'));
+    document.querySelectorAll('[data-action="menu"]').forEach(b => b.onclick = ()=>switchScreen(STATE.MENU));
+    document.querySelectorAll('[data-action="retry"]').forEach(b => b.onclick = ()=>switchScreen(STATE.BATTLE));
+    document.querySelector('.boss-card').onclick = ()=> { switchScreen(STATE.BATTLE); };
+
+    switchScreen(STATE.MENU);
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>
